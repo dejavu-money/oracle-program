@@ -1,16 +1,80 @@
 import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Oracle } from "../target/types/oracle";
+import { assert } from "chai";
+import { BN } from "bn.js";
 
 describe("oracle", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.AnchorProvider.env()
+  anchor.setProvider(provider);
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
 
   it("Is initialized!", async () => {
-    // Add your test here.
-    const tx = await program.methods.initialize().rpc();
-    console.log("Your transaction signature", tx);
+    const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
+      program.programId
+    );
+
+
+    await program
+      .methods
+      .initialize()
+      .accounts({
+        oracleItem: oracleItemAccount,
+        user: provider.wallet.publicKey
+      })
+      .rpc();
+
+    const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
+
+    assert.ok(
+      oracleItemAccountData.startedAt !== null,
+      'started_at should be initialized'
+    );
+
+    assert.ok(
+      oracleItemAccountData.finishedAt === null,
+      'finished_at should be null'
+    );
+
+    assert.ok(
+      oracleItemAccountData.authority.equals(provider.wallet.publicKey),
+      'authority should be assigned'
+    );
+  });
+
+  it("put", async () => {
+    const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
+      program.programId
+    );
+
+    await program
+      .methods
+      .put(5000)
+      .accounts({
+        oracleItem: oracleItemAccount,
+        user: provider.wallet.publicKey
+      })
+      .rpc();
+
+    const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
+
+    assert.ok(
+      oracleItemAccountData.finishedAt !== null,
+      'finished_at should be assigned'
+    );
+
+    assert.ok(
+      oracleItemAccountData.value === 5000,
+      'finished_at should be assigned'
+    );
+
+    assert.ok(
+      oracleItemAccountData.authority.equals(provider.wallet.publicKey),
+      'authority should be assigned'
+    );
   });
 });
