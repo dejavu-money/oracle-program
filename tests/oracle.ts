@@ -11,70 +11,76 @@ describe("oracle", () => {
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
 
-  it("Is initialized!", async () => {
-    const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
-      [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
-      program.programId
-    );
-
-
-    await program
-      .methods
-      .initialize()
-      .accounts({
-        oracleItem: oracleItemAccount,
-        user: provider.wallet.publicKey
-      })
-      .rpc();
-
-    const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
-
-    assert.ok(
-      oracleItemAccountData.startedAt !== null,
-      'started_at should be initialized'
-    );
-
-    assert.ok(
-      oracleItemAccountData.finishedAt === null,
-      'finished_at should be null'
-    );
-
-    assert.ok(
-      oracleItemAccountData.authority.equals(provider.wallet.publicKey),
-      'authority should be assigned'
-    );
+  describe("#initialize()", async () => {
+    it("initializes the oracle item account", async () => {
+      const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
+        [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
+        program.programId
+      );
+  
+  
+      await program
+        .methods
+        .initialize()
+        .accounts({
+          oracleItem: oracleItemAccount,
+          user: provider.wallet.publicKey
+        })
+        .rpc();
+  
+      const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
+  
+      assert.ok(
+        oracleItemAccountData.startedAt !== null,
+        'started_at should be initialized'
+      );
+  
+      assert.ok(
+        oracleItemAccountData.finishedAt === null,
+        'finished_at should be null'
+      );
+  
+      assert.ok(
+        oracleItemAccountData.authority.equals(provider.wallet.publicKey),
+        'authority should be assigned'
+      );
+    });
   });
 
-  it("put", async () => {
-    const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
-      [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
-      program.programId
-    );
-
-    await program
-      .methods
-      .put(5000)
-      .accounts({
-        oracleItem: oracleItemAccount,
-        user: provider.wallet.publicKey
-      })
-      .rpc();
-
-    const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
-
-    assert.ok(
-      oracleItemAccountData.finishedAt !== null,
-      'finished_at should be assigned'
-    );
-
-    assert.ok(
-      oracleItemAccountData.value === 5000,
-      'finished_at should be assigned'
-    );
-
-    assert.ok(
-      oracleItemAccountData.authority.equals(provider.wallet.publicKey),
-      'authority should be assigned'
-    );
+  describe("#put()", async () => {
+    it("sets oracle value ", async () => {
+      const [oracleItemAccount, _] = await anchor.web3.PublicKey.findProgramAddress(
+        [provider.wallet.publicKey.toBuffer(), Buffer.from("counter")],
+        program.programId
+      );
+  
+      await program
+        .methods
+        .put(5000)
+        .accounts({
+          oracleItem: oracleItemAccount,
+          user: provider.wallet.publicKey
+        })
+        .rpc();
+  
+      const oracleItemAccountData = await program.account.oracleItem.fetch(oracleItemAccount);
+  
+      assert.ok(
+        oracleItemAccountData.finishedAt !== null,
+        'finished_at should be assigned'
+      );
+  
+      assert.ok(
+        oracleItemAccountData.value === 5000,
+        'finished_at should be assigned'
+      );
+  
+      assert.ok(
+        oracleItemAccountData.authority.equals(provider.wallet.publicKey),
+        'authority should be assigned'
+      );
+    });
   });
+
+
 });
