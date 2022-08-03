@@ -4,13 +4,16 @@ import { Oracle } from "../target/types/oracle";
 import { assert } from "chai";
 import { BN } from "bn.js";
 
+const ORACLE_CLOSE = 1 * 60; // 1 minutes
+
 describe("oracle", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env()
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
-  let authId
+  let authId;
+  
   describe("#create_authorizer()", async () => {
     it("create an authorizer account", async () => {
       authId = new Date().getTime();
@@ -22,7 +25,7 @@ describe("oracle", () => {
 
       await program
         .methods
-        .createAuthorizer(new BN(authId))
+        .createAuthorizer(new BN(authId), new BN(ORACLE_CLOSE))
         .accounts({
           oracleAuthorizer: oracleAuthorizer,
           user: provider.wallet.publicKey
@@ -54,6 +57,9 @@ describe("oracle", () => {
         [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${oracleId}`)],
         program.programId
       );
+
+      const feedAccount = new anchor.web3.PublicKey("HgTtcbcmp5BeThax5AU8vg4VwK79qAvAKKFMs8txMLW6");
+      const chainLinkProgramAccount = new anchor.web3.PublicKey("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny")
   
       await program
         .methods
@@ -62,11 +68,15 @@ describe("oracle", () => {
           oracleAuthorizer: oracleAuthorizer,
           oracleItem: oracleItem,
           user: provider.wallet.publicKey,
-          feedAccount: oracleItem
+          feedAccount: feedAccount,
+          chainlinkProgram: chainLinkProgramAccount
         })
         .rpc();
   
       const oracleItemData = await program.account.oracleItem.fetch(oracleItem);
+
+      console.log(JSON.stringify(oracleItemData));
+      console.log(oracleItemData.round.toNumber())
   
       assert.ok(
         oracleItemData.authority.equals(oracleAuthorizer)
