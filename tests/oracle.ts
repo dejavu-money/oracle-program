@@ -4,21 +4,19 @@ import { Oracle } from "../target/types/oracle";
 import { assert } from "chai";
 import { BN } from "bn.js";
 
-const ORACLE_CLOSE = 0;
+const ORACLE_CLOSES_IN = 0; // seconds
 
 describe("oracle", () => {
-  // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env()
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
-  let authId;
   let oracleAuthAccount;
   let oracleItemAccount;
   
   describe("#create_authorizer()", async () => {
     it("create an authorizer account", async () => {
-      authId = new Date().getTime();
+      const authId = new Date().getTime();
 
       const [oracleAuthorizer] = await anchor.web3.PublicKey.findProgramAddress(
         [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${authId}`)],
@@ -29,7 +27,7 @@ describe("oracle", () => {
 
       await program
         .methods
-        .createAuthorizer(new BN(authId), new BN(ORACLE_CLOSE))
+        .createAuthorizer(new BN(authId), new BN(ORACLE_CLOSES_IN))
         .accounts({
           oracleAuthorizer: oracleAuthorizer,
           user: provider.wallet.publicKey
@@ -50,12 +48,8 @@ describe("oracle", () => {
   });
 
   describe("#create_oracle()", async () => {
-    it("create an oracle account", async () => {
+    it("creates an oracle account", async () => {
       const oracleId = new Date().getTime();
-      const [oracleAuthorizer] = await anchor.web3.PublicKey.findProgramAddress(
-        [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${authId}`)],
-        program.programId
-      );
 
       const [oracleItem] = await anchor.web3.PublicKey.findProgramAddress(
         [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${oracleId}`)],
@@ -71,7 +65,7 @@ describe("oracle", () => {
         .methods
         .createOracle(new BN(oracleId))
         .accounts({
-          oracleAuthorizer: oracleAuthorizer,
+          oracleAuthorizer: oracleAuthAccount,
           oracleItem: oracleItem,
           user: provider.wallet.publicKey,
           feedAccount: feedAccount,
@@ -82,7 +76,7 @@ describe("oracle", () => {
       const oracleItemData = await program.account.oracleItem.fetch(oracleItem);
 
       assert.ok(
-        oracleItemData.authority.equals(oracleAuthorizer)
+        oracleItemData.authority.equals(oracleAuthAccount)
       );
     });
   });
@@ -113,7 +107,3 @@ describe("oracle", () => {
     });
   });
 });
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}

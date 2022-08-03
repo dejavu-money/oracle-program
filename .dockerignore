@@ -4,7 +4,6 @@ target
 **/*.rs.bk
 node_modules
 test-ledger
-
 # Created by https://www.toptal.com/developers/gitignore/api/rust,macos,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust,macos,node
 
@@ -198,4 +197,3 @@ Cargo.lock
 *.pdb
 
 # End of https://www.toptal.com/developers/gitignore/api/rust,macos,node
-
