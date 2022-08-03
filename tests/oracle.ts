@@ -4,7 +4,7 @@ import { Oracle } from "../target/types/oracle";
 import { assert } from "chai";
 import { BN } from "bn.js";
 
-const ORACLE_CLOSE = 1 * 60; // 1 minutes
+const ORACLE_CLOSE = 0;
 
 describe("oracle", () => {
   // Configure the client to use the local cluster.
@@ -13,6 +13,8 @@ describe("oracle", () => {
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
   let authId;
+  let oracleAuthAccount;
+  let oracleItemAccount;
   
   describe("#create_authorizer()", async () => {
     it("create an authorizer account", async () => {
@@ -22,6 +24,8 @@ describe("oracle", () => {
         [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${authId}`)],
         program.programId
       );
+
+      oracleAuthAccount = oracleAuthorizer;
 
       await program
         .methods
@@ -58,6 +62,8 @@ describe("oracle", () => {
         program.programId
       );
 
+      oracleItemAccount = oracleItem;
+
       const feedAccount = new anchor.web3.PublicKey("HgTtcbcmp5BeThax5AU8vg4VwK79qAvAKKFMs8txMLW6");
       const chainLinkProgramAccount = new anchor.web3.PublicKey("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny")
   
@@ -75,13 +81,39 @@ describe("oracle", () => {
   
       const oracleItemData = await program.account.oracleItem.fetch(oracleItem);
 
-      console.log(JSON.stringify(oracleItemData));
-      console.log(oracleItemData.round.toNumber())
-  
       assert.ok(
         oracleItemData.authority.equals(oracleAuthorizer)
       );
+    });
+  });
 
+  describe("#update_oracle()", async () => {
+    it("updates an oracle account", async () => {
+
+      const feedAccount = new anchor.web3.PublicKey("HgTtcbcmp5BeThax5AU8vg4VwK79qAvAKKFMs8txMLW6");
+      const chainLinkProgramAccount = new anchor.web3.PublicKey("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny")
+  
+      await program
+        .methods
+        .updateOracle()
+        .accounts({
+          oracleItem: oracleItemAccount,
+          oracleAuthorizer: oracleAuthAccount,
+          user: provider.wallet.publicKey,
+          feedAccount: feedAccount,
+          chainlinkProgram: chainLinkProgramAccount
+        })
+        .rpc();
+  
+      const oracleItemData = await program.account.oracleItem.fetch(oracleItemAccount);
+
+      // assert.ok(
+      //   oracleItemData.authority.equals(oracleAuthorizer)
+      // );
     });
   });
 });
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

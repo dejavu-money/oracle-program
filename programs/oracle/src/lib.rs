@@ -96,9 +96,9 @@ pub struct OracleItem {
     chainlink_feed: Pubkey, // 32
     started_at: i64, // 8
     closed_at: i64, // 8
-    finished_at: Option<i64>, // 8
-    decimals: u8,
-    round: i128
+    finished_at: Option<i64>, // 9
+    decimals: u8, // 1
+    round: i128 // 16
 }
 
 #[derive(Accounts)]
@@ -124,7 +124,7 @@ pub struct CreateOracle<'info> {
     #[account(
         init, 
         payer = user, 
-        space = 8 + 32 + 32 + 8 + 8 + 8 + 1 + 16,
+        space = 8 + 32 + 32 + 8 + 8 + 9 + 1 + 16,
         seeds = [user.key().as_ref(), format!("id-{}", oracle_id).as_bytes().as_ref()], 
         bump,
         constraint = oracle_authorizer.authority == *user.key
@@ -145,11 +145,12 @@ pub struct CreateOracle<'info> {
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
-        constraint = oracle_item.authority == *user.key
+        constraint = oracle_item.authority == *oracle_authorizer.to_account_info().key
     )]
     oracle_item: Account<'info, OracleItem>,
     #[account(mut)]
     user: Signer<'info>,
+    oracle_authorizer: Account<'info, OracleAuthorizer>,
     /// CHECK: Todo
     feed_account: UncheckedAccount<'info>,
     /// CHECK: This is the Chainlink program library
