@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { Oracle } from "../target/types/oracle";
 import { assert } from "chai";
-// import { BN } from "bn.js";
+import { BN } from "bn.js";
 
 describe("oracle", () => {
   // Configure the client to use the local cluster.
@@ -10,20 +10,19 @@ describe("oracle", () => {
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Oracle as Program<Oracle>;
-
+  let authId
   describe("#create_authorizer()", async () => {
     it("create an authorizer account", async () => {
-      console.log('address: ');
-      console.log(program.programId.toString());
+      authId = new Date().getTime();
 
       const [oracleAuthorizer] = await anchor.web3.PublicKey.findProgramAddress(
-        [provider.wallet.publicKey.toBuffer()],
+        [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${authId}`)],
         program.programId
       );
 
       await program
         .methods
-        .createAuthorizer()
+        .createAuthorizer(new BN(authId))
         .accounts({
           oracleAuthorizer: oracleAuthorizer,
           user: provider.wallet.publicKey
@@ -45,19 +44,20 @@ describe("oracle", () => {
 
   describe("#create_oracle()", async () => {
     it("create an oracle account", async () => {
+      const oracleId = new Date().getTime();
       const [oracleAuthorizer] = await anchor.web3.PublicKey.findProgramAddress(
-        [provider.wallet.publicKey.toBuffer()],
+        [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${authId}`)],
         program.programId
       );
 
       const [oracleItem] = await anchor.web3.PublicKey.findProgramAddress(
-        [provider.wallet.publicKey.toBuffer(), Buffer.from('counter')],
+        [provider.wallet.publicKey.toBuffer(), Buffer.from(`id-${oracleId}`)],
         program.programId
       );
   
       await program
         .methods
-        .createOracle()
+        .createOracle(new BN(oracleId))
         .accounts({
           oracleAuthorizer: oracleAuthorizer,
           oracleItem: oracleItem,

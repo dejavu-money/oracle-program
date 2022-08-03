@@ -7,7 +7,7 @@ const ONE_HOUR_TO_SECONDS: i64 = 1 * 60 * 60;
 pub mod oracle {
     use super::*;
 
-    pub fn create_oracle(ctx: Context<CreateOracle>) -> Result<()> {
+    pub fn create_oracle(ctx: Context<CreateOracle>, _oracle_id: i64) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
         ctx.accounts.oracle_item.authority = ctx.accounts.oracle_authorizer.key();
         ctx.accounts.oracle_item.started_at = timestamp;
@@ -24,7 +24,7 @@ pub mod oracle {
         Ok(())
     }
 
-    pub fn create_authorizer(ctx: Context<CreateAuthorizer>) -> Result<()> {
+    pub fn create_authorizer(ctx: Context<CreateAuthorizer>, _auth_id: i64) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
         ctx.accounts.oracle_authorizer.authority = *ctx.accounts.user.key;
         ctx.accounts.oracle_authorizer.created_at = timestamp;
@@ -63,12 +63,13 @@ pub struct OracleItem {
 }
 
 #[derive(Accounts)]
+#[instruction(auth_id: i64)]
 pub struct CreateAuthorizer<'info> {
     #[account(
         init, 
         payer = user, 
         space = 8 + 32 + 8,
-        seeds = [user.key().as_ref()], 
+        seeds = [user.key().as_ref(), format!("id-{}", auth_id).as_bytes().as_ref()], 
         bump
     )]
     oracle_authorizer: Account<'info, OracleAuthorizer>,
@@ -79,12 +80,13 @@ pub struct CreateAuthorizer<'info> {
 
 
 #[derive(Accounts)]
+#[instruction(oracle_id: i64)]
 pub struct CreateOracle<'info> {
     #[account(
         init, 
         payer = user, 
         space = 8 + 32 + 32 + 8 + 8 + 8 + 4,
-        seeds = [user.key().as_ref(), b"counter".as_ref()], 
+        seeds = [user.key().as_ref(), format!("id-{}", oracle_id).as_bytes().as_ref()], 
         bump,
         constraint = oracle_authorizer.authority == *user.key
     )]
