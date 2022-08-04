@@ -1,25 +1,78 @@
 use anchor_lang::prelude::*;
+use chainlink_solana as chainlink;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("CXCE5fYFEuGShPKXGTYafxr3iChkBzgxCcAx1TABXJ1D");
+
+#[account]
+pub struct Decimal {
+    pub value: i128,
+    pub decimals: u32,
+}
 
 #[program]
 pub mod oracle {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    pub fn create_oracle(ctx: Context<CreateOracle>, _oracle_id: i64) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
+        ctx.accounts.oracle_item.authority = ctx.accounts.oracle_authorizer.key();
+        ctx.accounts.oracle_item.started_at = timestamp;
+        ctx.accounts.oracle_item.closed_at = timestamp + ctx.accounts.oracle_authorizer.closed_seconds;
 
-        ctx.accounts.oracle_item.authority = *ctx.accounts.user.key;
-        ctx.accounts.oracle_item.started_at = Some(timestamp);
+        // get decimal value from chainlink program
+        let decimals = chainlink::decimals(
+            ctx.accounts.chainlink_program.to_account_info(),
+            ctx.accounts.feed_account.to_account_info()
+        )?;
+
+         // get round value from chainlink program
+        let round = chainlink::latest_round_data(
+            ctx.accounts.chainlink_program.to_account_info(),
+            ctx.accounts.feed_account.to_account_info()
+        )?;
+
+        ctx.accounts.oracle_item.decimals = decimals;
+        ctx.accounts.oracle_item.round = round.answer;
 
         Ok(())
     }
 
-    pub fn put(ctx: Context<PutCommand>, value: u32) -> Result<()> {
+    pub fn create_authorizer(ctx: Context<CreateAuthorizer>, _auth_id: i64, closed_seconds: i64) -> Result<()> {
+        let timestamp = Clock::get()?.unix_timestamp;
+        ctx.accounts.oracle_authorizer.authority = *ctx.accounts.user.key;
+        ctx.accounts.oracle_authorizer.created_at = timestamp;
+        ctx.accounts.oracle_authorizer.closed_seconds = closed_seconds;
+
+        Ok(())
+    }
+
+    pub fn update_oracle(ctx: Context<UpdateOracle>) -> Result<()> {
+        let oracle_item = &ctx.accounts.oracle_item;
         let timestamp = Clock::get()?.unix_timestamp;
 
-        ctx.accounts.oracle_item.value = Some(value);
+        if oracle_item.finished_at != None {
+            return err!(Errors::OracleExpired);   
+        }
+
+        if oracle_item.closed_at > timestamp {
+            return err!(Errors::TimeInvalid);   
+        }
+
+         // get decimal value from chainlink program
+        let decimals = chainlink::decimals(
+            ctx.accounts.chainlink_program.to_account_info(),
+            ctx.accounts.feed_account.to_account_info()
+        )?;
+         // get round value from chainlink program
+        let round = chainlink::latest_round_data(
+            ctx.accounts.chainlink_program.to_account_info(),
+            ctx.accounts.feed_account.to_account_info()
+        )?;
+
+        ctx.accounts.oracle_item.decimals = decimals;
+        ctx.accounts.oracle_item.round = round.answer;
         ctx.accounts.oracle_item.finished_at = Some(timestamp);
+
 
         Ok(())
     }
@@ -27,39 +80,89 @@ pub mod oracle {
 
 
 #[account]
-#[derive(Default)]
+pub struct FeedItem {
+}
+
+#[account]
+pub struct OracleAuthorizer {
+    authority: Pubkey, // 32
+    created_at: i64, // 8
+    closed_seconds: i64 // 8
+}
+
+#[account]
 pub struct OracleItem {
-    pub id: i8,
-    pub started_at: Option<i64>,
-    pub finished_at: Option<i64>,
-    pub authority: Pubkey,
-    pub value: Option<u32>
+    authority: Pubkey, // 32
+    chainlink_feed: Pubkey, // 32
+    started_at: i64, // 8
+    closed_at: i64, // 8
+    finished_at: Option<i64>, // 9
+    decimals: u8, // 1
+    round: i128 // 16
 }
 
 #[derive(Accounts)]
-pub struct Initialize<'info> {
+#[instruction(auth_id: i64)]
+pub struct CreateAuthorizer<'info> {
     #[account(
         init, 
         payer = user, 
-        space = 8 + 1 + 9 + 9 + 32 + 5,
-        seeds = [user.key().as_ref(), b"counter".as_ref()], 
+        space = 8 + 32 + 8 + 8,
+        seeds = [user.key().as_ref(), format!("id-{}", auth_id).as_bytes().as_ref()], 
         bump
     )]
-    pub oracle_item: Account<'info, OracleItem>,
+    oracle_authorizer: Account<'info, OracleAuthorizer>,
     #[account(mut)]
-    pub user: Signer<'info>,
-    pub system_program: Program<'info, System>,
+    user: Signer<'info>,
+    system_program: Program<'info, System>,
 }
 
 
 #[derive(Accounts)]
-pub struct PutCommand<'info> {
+#[instruction(oracle_id: i64)]
+pub struct CreateOracle<'info> {
+    #[account(
+        init, 
+        payer = user, 
+        space = 8 + 32 + 32 + 8 + 8 + 9 + 1 + 16,
+        seeds = [user.key().as_ref(), format!("id-{}", oracle_id).as_bytes().as_ref()], 
+        bump,
+        constraint = oracle_authorizer.authority == *user.key
+    )]
+    oracle_item: Account<'info, OracleItem>,
+    #[account(mut)]
+    user: Signer<'info>,
+    system_program: Program<'info, System>,
+    oracle_authorizer: Account<'info, OracleAuthorizer>,
+    /// CHECK: Todo
+    feed_account: UncheckedAccount<'info>,
+    /// CHECK: This is the Chainlink program library
+    pub chainlink_program: AccountInfo<'info>
+}
+
+
+#[derive(Accounts)]
+pub struct UpdateOracle<'info> {
     #[account(
         mut,
-        constraint = oracle_item.authority == *user.key,
-        constraint = oracle_item.value == None
+        constraint = oracle_item.authority == *oracle_authorizer.to_account_info().key
     )]
-    pub oracle_item: Account<'info, OracleItem>,
+    oracle_item: Account<'info, OracleItem>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    user: Signer<'info>,
+    oracle_authorizer: Account<'info, OracleAuthorizer>,
+    /// CHECK: Todo
+    feed_account: UncheckedAccount<'info>,
+    /// CHECK: This is the Chainlink program library
+    pub chainlink_program: AccountInfo<'info>
+}
+
+// errors
+
+#[error_code]
+pub enum Errors {
+    #[msg("the current timestamp should be greater than closed_at")]
+    TimeInvalid,
+    #[msg("Oracle expired")]
+    OracleExpired
 }
