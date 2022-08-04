@@ -1,6 +1,6 @@
 # Dejavu Oracle Program
 
-## Running the tests on Devnet
+## Tests
 As we get the prices using the chainlink feeds, we must to run the tests on Devnet because the feed program is deployed there.
 
 ### How to prepare tests environment locally
