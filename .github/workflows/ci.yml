@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Validate declare_id
+        run: (grep -rnw './programs' -e 'declare_id!("YOUR_PROGRAM_ID");') || exit 1
       - name: Add wallet
         run: echo $DEVNET_TEST_WALLET > id.json
         env:
@@ -18,6 +20,11 @@ jobs:
         run: echo $ORACLE_PROGRAM_KEYPAIR_TEST > program-keypair.json
         env:
           ORACLE_PROGRAM_KEYPAIR_TEST: ${{ secrets.ORACLE_PROGRAM_KEYPAIR_TEST }}
+      - name: Replace declare_id with the right address
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          find: "YOUR_PROGRAM_ID"
+          replace: "CXCE5fYFEuGShPKXGTYafxr3iChkBzgxCcAx1TABXJ1D"
       - name: Anchor Tests
         run: docker build -f Dockerfile.ci -t ci . && docker run ci sh ./.ci/tests.sh
   deploy-dev:
@@ -26,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Validate declare_id
+        run: (grep -rnw './programs' -e 'declare_id!("YOUR_PROGRAM_ID");') || exit 1
       - name: Add wallet
         run: echo $DEVNET_DEV_WALLET > id.json
         env:
@@ -34,5 +43,10 @@ jobs:
         run: echo $ORACLE_PROGRAM_KEYPAIR_DEV > program-keypair.json
         env:
           ORACLE_PROGRAM_KEYPAIR_DEV: ${{ secrets.ORACLE_PROGRAM_KEYPAIR_DEV }}
+      - name: Replace declare_id with the right address
+        uses: jacobtomlinson/gha-find-replace@v2
+        with:
+          find: "YOUR_PROGRAM_ID"
+          replace: "BFGzZeqA47Kgxv7x1D1bZ7RENbjgV1FjrDd3z7Pse9Q4"
       - name: Deploy to Devnet
         run: docker build -f Dockerfile.ci -t ci . && docker run ci sh ./.ci/deploy-dev.sh
