@@ -5,6 +5,8 @@ import { assert } from "chai";
 import { BN } from "bn.js";
 
 const ORACLE_CLOSES_IN = 0; // seconds
+const ORACLE_FINISHED_IN = 0; // seconds
+
 
 describe("oracle", () => {
   const provider = anchor.AnchorProvider.env()
@@ -27,7 +29,7 @@ describe("oracle", () => {
 
       await program
         .methods
-        .createAuthorizer(new BN(authId), new BN(ORACLE_CLOSES_IN))
+        .createAuthorizer(new BN(authId), new BN(ORACLE_CLOSES_IN), new BN(ORACLE_FINISHED_IN))
         .accounts({
           oracleAuthorizer: oracleAuthorizer,
           user: provider.wallet.publicKey
@@ -101,9 +103,10 @@ describe("oracle", () => {
   
       const oracleItemData = await program.account.oracleItem.fetch(oracleItemAccount);
 
-      // assert.ok(
-      //   oracleItemData.authority.equals(oracleAuthorizer)
-      // );
+      assert.ok(
+        oracleItemData.isFinished,
+        "oracle should be finalized"
+      );
     });
   });
 });
