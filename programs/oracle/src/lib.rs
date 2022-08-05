@@ -10,6 +10,7 @@ pub mod oracle {
     pub fn create_oracle(ctx: Context<CreateOracle>, _oracle_id: i64) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
         ctx.accounts.oracle_item.authority = ctx.accounts.oracle_authorizer.key();
+        ctx.accounts.oracle_item.chainlink_feed = ctx.accounts.feed_account.key();
         ctx.accounts.oracle_item.started_at = timestamp;
         ctx.accounts.oracle_item.closed_at =
             timestamp + ctx.accounts.oracle_authorizer.closed_seconds;
@@ -57,7 +58,7 @@ pub mod oracle {
             return err!(Errors::OracleExpired);
         }
 
-        if oracle_item.closed_at > timestamp {
+        if oracle_item.finished_at > timestamp {
             return err!(Errors::TimeInvalid);
         }
 
