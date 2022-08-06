@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use chainlink_solana as chainlink;
 
-declare_id!("CXCE5fYFEuGShPKXGTYafxr3iChkBzgxCcAx1TABXJ1D");
+declare_id!("YOUR_PROGRAM_ID");
 
 #[program]
 pub mod oracle {
