@@ -9,6 +9,7 @@ pub mod oracle {
 
     pub fn create_oracle(ctx: Context<CreateOracle>, _oracle_id: i64) -> Result<()> {
         let timestamp = Clock::get()?.unix_timestamp;
+
         ctx.accounts.oracle_item.authority = ctx.accounts.oracle_authorizer.key();
         ctx.accounts.oracle_item.chainlink_feed = ctx.accounts.feed_account.key();
         ctx.accounts.oracle_item.started_at = timestamp;
@@ -127,7 +128,8 @@ pub struct CreateOracle<'info> {
         space = 8 + 32 + 32 + 8 + 8 + 8 + 1 + 16 + 1,
         seeds = [user.key().as_ref(), format!("id-{}", oracle_id).as_bytes().as_ref()], 
         bump,
-        constraint = oracle_authorizer.authority == *user.key
+        constraint = oracle_authorizer.authority == *user.key,
+        constraint = chainlink_program.key() == *feed_account.to_account_info().owner
     )]
     oracle_item: Account<'info, OracleItem>,
     #[account(mut)]
@@ -144,7 +146,8 @@ pub struct CreateOracle<'info> {
 pub struct UpdateOracle<'info> {
     #[account(
         mut,
-        constraint = oracle_item.authority == *oracle_authorizer.to_account_info().key
+        constraint = oracle_item.authority == *oracle_authorizer.to_account_info().key,
+        constraint = chainlink_program.key() == *feed_account.to_account_info().owner
     )]
     oracle_item: Account<'info, OracleItem>,
     #[account(mut)]
