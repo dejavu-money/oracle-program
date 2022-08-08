@@ -147,7 +147,8 @@ pub struct UpdateOracle<'info> {
     #[account(
         mut,
         constraint = oracle_item.authority == *oracle_authorizer.to_account_info().key,
-        constraint = chainlink_program.key() == *feed_account.to_account_info().owner
+        constraint = chainlink_program.key() == *feed_account.to_account_info().owner,
+        constraint = oracle_item.chainlink_feed == *feed_account.key
     )]
     oracle_item: Account<'info, OracleItem>,
     #[account(mut)]
